@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.37
+Version: 1.38
 Author: masomi79
 */
 
@@ -1126,7 +1126,6 @@ function woca_get_default_email_templates() {
             'payment_confirmation' => array(
                 'title'   => '入金御礼メール（デフォルト）',
                 'subject' => '[注文番号 %ORDER_ID%] ご入金ありがとうございます',
-//                'body'    => "様この度は「かべネコ VPN-Cats On The Wall 」 をご利用下さいまして誠に有難うございます。\n\nまた，早々にご入金くださり，心から御礼申し上げます。確認させていただきました。\n\nご利用に際して，問題等ございましたら，些細なことでも結構ですので，お気軽にお問い合わせ頂ければ幸いです。\n\nこの度のご購入に重ねて感謝申し上げます。\n\n【ご注文内容】\n******************************************************\n注文番号 : %ORDER_ID% \n注文日時 : %ORDER_DATE% \nお申し込みプラン :\n------------------------------------------------------------------\nVPN 1ヶ月プラン\n料金 ¥880 x 1\n=============================================\n商品合計 : ¥\nキャンペーン割引 : ¥\n送料 : ¥0\n------------------------------------------------------------------\nお支払い金額 : ¥%ORDER_TOTAL%\n------------------------------------------------------------------\n (通貨 : 円)\n\n【お支払方法】\n******************************************************\n%ORDER_ID%\n******************************************************\nカート用受注識別コード ; %ORDER_ID% \n******************************************************\n\n【その他】\n******************************************************\n%ORDER_ID%\n\nかべネコVPN\n****************** 運営会社 *******************\n株式会社エフネット \n電気通信事業部 神奈川デスク \n243-0204 神奈川県厚木市鳶尾2-25-5-302\n---------------------------------------------------------\n本社:140-0001 東京都品川区北品川1-9-7 \nトップルーム品川1015\n---------------------------------------------------------\n総務省 電気通信事業届出 A-26-13948\n*************************************************",
                 'body' => trim(<<<'EOT'
 %CUSTOMER_NAME%様
 この度は「かべネコ VPN-Cats On The Wall 」 をご利用下さいまして誠に有難うございます。
@@ -1248,7 +1247,7 @@ function woca_get_email_templates() {
  * Helper: get customer name from order meta (usces).
  * If not found, fallback to order email or empty string.
  */
-function woca_get_order_customer_name($order_id, $order_obj = null) {
+/*function woca_get_order_customer_name($order_id, $order_obj = null) {
     global $wpdb;
     $candidate_keys = array('order_name','customer_name','name','buyer_name');
     foreach ($candidate_keys as $key) {
@@ -1264,6 +1263,21 @@ function woca_get_order_customer_name($order_id, $order_obj = null) {
         return $order_obj->order_email;
     }
     return '';
+}
+    */
+function woca_get_order_customer_name( $order_id, $order_obj = null ) {
+    global $wpdb;
+
+    if ( $order_obj && ! empty( $order_obj->order_email ) ) {
+        return trim( $order_obj->order_email );
+    }
+
+    $order_email = $wpdb->get_var( $wpdb->prepare(
+        "SELECT order_email FROM {$wpdb->prefix}usces_order WHERE ID = %d LIMIT 1",
+        $order_id
+    ) );
+
+    return $order_email ? trim( $order_email ) : '';
 }
 
 /**
