@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.38
+Version: 1.39
 Author: masomi79
 */
 
@@ -361,14 +361,6 @@ function debug_export_csv() {
 }
 add_action('admin_init', 'debug_export_csv');
 
-// 管理画面内の任意の場所にデバッグ用CSV出力ボタンを追加
-/**
- *  function add_debug_csv_button() {
- *   $export_url = add_query_arg( 'export_hello', '1', admin_url('admin.php?page=welcart-order-admin') );
- *   echo '<button class="button" onclick="location.href=\'' . esc_url($export_url) . '\'">CSV Debug Export</button>';
- *   }
- *   add_action('admin_notices', 'add_debug_csv_button');
-*/
 // 受注リストを取得して表示する関数
 function custom_show_welcart_orders() {
 
@@ -381,7 +373,6 @@ function custom_show_welcart_orders() {
 
     echo '<div class="wrap">';
     echo '<h2>Welcartの受注管理</h2>';
-
 
 
 
@@ -1107,6 +1098,7 @@ function custom_show_welcart_order_detail() {
     woca_render_email_modal($order);
     echo '</div>';
 }
+
 /**
  * メール送信機能
  *
@@ -1243,28 +1235,9 @@ function woca_get_email_templates() {
     return woca_get_default_email_templates();
 }
 
-/**
- * Helper: get customer name from order meta (usces).
- * If not found, fallback to order email or empty string.
- */
-/*function woca_get_order_customer_name($order_id, $order_obj = null) {
-    global $wpdb;
-    $candidate_keys = array('order_name','customer_name','name','buyer_name');
-    foreach ($candidate_keys as $key) {
-        $val = $wpdb->get_var( $wpdb->prepare(
-            "SELECT meta_value FROM {$wpdb->prefix}usces_order_meta WHERE order_id = %d AND meta_key = %s",
-            $order_id, $key
-        ) );
-        if ( $val ) {
-            return $val;
-        }
-    }
-    if ( $order_obj && ! empty($order_obj->order_email) ) {
-        return $order_obj->order_email;
-    }
-    return '';
-}
-    */
+/*
+カスタマー名はorder_mailを使用する
+*/
 function woca_get_order_customer_name( $order_id, $order_obj = null ) {
     global $wpdb;
 
@@ -1327,8 +1300,7 @@ function woca_render_template_for_order($template_text, $order_id, $order_obj = 
 }
 
 /**
- * Render email modal in admin order detail.
- * This outputs the modal HTML and an inline script that exposes templates and ajax params to JS.
+ * メール送信フォームのモーダルを表示する
  */
 function woca_render_email_modal($order) {
     if ( ! $order || ! isset($order->ID) ) return;
