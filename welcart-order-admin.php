@@ -1363,6 +1363,82 @@ function woca_render_email_modal($order) {
 /**
  * AJAX handler: send email from admin.
  */
+
+
+ add_action('wp_ajax_woca_send_order_email', 'woca_send_order_email');
+ function woca_send_order_email() {
+     // nonce
+     if ( ! isset($_POST['nonce']) || ! wp_verify_nonce($_POST['nonce'], 'woca_send_email') ) {
+         wp_send_json_error( array('message' => '不正なリクエスト（nonce）。') );
+     }
+ 
+     // capability (filterable)
+     $capability = apply_filters('woca_email_send_capability', 'edit_posts');
+     if ( ! current_user_can($capability) ) {
+         wp_send_json_error( array('message' => '送信権限がありません。') );
+     }
+ 
+     $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
+     $to = isset($_POST['to']) ? sanitize_email($_POST['to']) : '';
+     $subject = isset($_POST['subject']) ? sanitize_text_field($_POST['subject']) : '';
+     $body = isset($_POST['body']) ? wp_strip_all_tags($_POST['body']) : '';
+ 
+     if ( ! $order_id || ! is_email($to) ) {
+         wp_send_json_error( array('message' => '宛先メールアドレスが不正、または注文IDが指定されていません。') );
+     }
+ 
+     // load order
+     global $wpdb;
+     $order = $wpdb->get_row( $wpdb->prepare("SELECT * FROM {$wpdb->prefix}usces_order WHERE ID = %d", $order_id) );
+ 
+     // template replacements
+     $subject = woca_render_template_for_order($subject, $order_id, $order);
+     $body = woca_render_template_for_order($body, $order_id, $order);
+ 
+     // ---------------------------
+     // From / Reply-To の決定（ここを環境に合わせて簡単に上書きできます）
+     // デフォルトは管理者メールとサイト名を使う
+     $default_from_email = get_option('admin_email', 'no-reply@' . ( isset($_SERVER['HTTP_HOST']) ? preg_replace('/^www\./', '', $_SERVER['HTTP_HOST']) : 'localhost' ));
+     $default_from_name  = get_bloginfo( 'name' );
+ 
+     // フィルタで上書きを許可（例: add_filter('woca_email_from', fn() => 'no-reply@wallcats.net');）
+     $from_email = apply_filters( 'woca_email_from', $default_from_email );
+     $from_name  = apply_filters( 'woca_email_from_name', $default_from_name );
+ 
+     // ヘッダ作成（安全のためサニタイズ）
+     $safe_from_name  = wp_strip_all_tags( $from_name );
+     $safe_from_email = sanitize_email( $from_email );
+ 
+     $headers = array();
+     $headers[] = 'From: ' . $safe_from_name . ' <' . $safe_from_email . '>';
+     $headers[] = 'Reply-To: ' . $safe_from_email;
+ 
+     // ---------------------------
+     // HTML メール化（改行を <br> に変換して送信）
+     $html_body = '<!doctype html><html><head><meta charset="utf-8"></head><body>';
+     $html_body .= nl2br( esc_html( $body ) );
+     $html_body .= '</body></html>';
+ 
+     // content-type フィルタ用コールバックを安全に定義
+     if ( ! function_exists( 'woca_set_html_mail_content_type' ) ) {
+         function woca_set_html_mail_content_type() {
+             return 'text/html; charset=UTF-8';
+         }
+     }
+ 
+     // 一時的に content-type を HTML に変更して送信
+     add_filter( 'wp_mail_content_type', 'woca_set_html_mail_content_type' );
+     $sent = wp_mail( $to, $subject, $html_body, $headers );
+     remove_filter( 'wp_mail_content_type', 'woca_set_html_mail_content_type' );
+ 
+     if ( $sent ) {
+         wp_send_json_success( array('message' => 'メールを送信しました。') );
+     } else {
+         wp_send_json_error( array('message' => 'メール送信に失敗しました。サーバのメール設定を確認してください。') );
+     }
+ }
+
+ /*
 add_action('wp_ajax_woca_send_order_email', 'woca_send_order_email');
 function woca_send_order_email() {
     // nonce
@@ -1409,7 +1485,7 @@ function woca_send_order_email() {
         wp_send_json_error( array('message' => 'メール送信に失敗しました。サーバのメール設定を確認してください。') );
     }
 }
-
+*/
 /**
  * Log wp_mail failures for debugging.
  */
