@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.39
+Version: 1.40
 Author: masomi79
 */
 
@@ -1398,12 +1398,16 @@ function woca_render_email_modal($order) {
      // ---------------------------
      // From / Reply-To の決定（ここを環境に合わせて簡単に上書きできます）
      // デフォルトは管理者メールとサイト名を使う
+     /*
      $default_from_email = get_option('admin_email', 'no-reply@' . ( isset($_SERVER['HTTP_HOST']) ? preg_replace('/^www\./', '', $_SERVER['HTTP_HOST']) : 'localhost' ));
      $default_from_name  = get_bloginfo( 'name' );
  
      // フィルタで上書きを許可（例: add_filter('woca_email_from', fn() => 'no-reply@wallcats.net');）
      $from_email = apply_filters( 'woca_email_from', $default_from_email );
      $from_name  = apply_filters( 'woca_email_from_name', $default_from_name );
+*/
+     $from_email = 'no-reply@kabeneko.biz';
+     $from_name  = 'かべネコVPN';
  
      // ヘッダ作成（安全のためサニタイズ）
      $safe_from_name  = wp_strip_all_tags( $from_name );
