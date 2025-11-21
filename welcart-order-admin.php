@@ -964,12 +964,6 @@ function custom_show_welcart_order_detail() {
     echo ' <a href="' . admin_url('admin.php?page=welcart-order-admin') . '" class="button">戻る</a>';
     echo '</p>';
     echo '<p class="submit-buttons-wrap">値を変更した場合は必ず最後に「設定を更新」ボタンを押してください。</p>';
-//    echo '<table class="widefat fixed welcart-order-detail order-detail-table">';
-//    echo '<thead><tr><th class="title">項目</th><th class="content">詳細</th></tr></thead>';
-//    echo '<tbody>';
-//    echo ' <a href="' . admin_url('admin.php?page=welcart-order-admin') . '" class="button">戻る</a>';
-//    echo '</p>';
-//    echo '<p class="submit-buttons-wrap">値を変更した場合は必ず最後に「設定を更新」ボタンを押してください。</p>';
     echo '<table class="widefat fixed welcart-order-detail order-detail-table">';
     echo '<thead><tr><th class="title">項目</th><th class="content">詳細</th></tr></thead>';
     echo '<tbody>';
@@ -1006,25 +1000,12 @@ function custom_show_welcart_order_detail() {
     $receipt_status_options = [
         "noreceipt",
         "receipted",
-        "pending"/*,
-        "adminorder",
-        "cancel",
-        "cancelnoreceipt",
-        "cancel,pending",
-        "cancel,receipted",
-        "completion,adminorder",
-        "completion,receipted,adminorder",
-        "noreceipt,pending",
-        "pending,receipted"*/
+        "pending"
     ];
     echo '<tr><td>入金状況</td><td>';
     echo '<select name="receipt_status" style="width:100%">';
     echo '<option value=""></option>';
     foreach ($receipt_status_options as $opt) {
-        /*
-        $label = isset($status_map[$opt]) ? $status_map[$opt] : $opt;
-        echo '<option value="' . esc_attr($opt) . '" ' . selected($order_status, $opt, false) . '>' . esc_html($label) . '</option>';
-        */
          // $opt の中にカンマがある場合は、取得したreceipt_statusと比較
          $selected_value = (strpos($opt, ',') !== false) ? $receipt_status : $opt;
          $label = isset($receipt_map[$opt]) ? $receipt_map[$opt] : $opt;
@@ -1037,22 +1018,12 @@ function custom_show_welcart_order_detail() {
     // 対応状況（taio_status）の表示
     $taio_map = [
         "#none#"      => "新規受付中",
-    //    "duringorder" => "取り寄せ中",
         "cancel"      => "キャンセル",
-    //    "completion"  => "発送済み"
     ];
 
     echo '<tr><td>対応状況</td><td>';
     echo '<select name="order_taio" style="width:100%">';
     echo '<option value=""></option>';
-    /*   // 以下のコメントアウトは、対応状況の選択肢を追加する場合
-    $taio_map = [
-        "#none#"      => "新規受付中",
-        "duringorder" => "取り寄せ中",
-        "cancel"      => "キャンセル",
-        "completion"  => "発送済み"
-    ];
-    */
     foreach ($taio_map as $value => $label) {
         echo '<option value="' . esc_attr($value) . '" ' . selected($taio_status, $value, false) . '>' . esc_html($label) . '</option>';
     }
@@ -1396,16 +1367,9 @@ function woca_render_email_modal($order) {
      $body = woca_render_template_for_order($body, $order_id, $order);
  
      // ---------------------------
-     // From / Reply-To の決定（ここを環境に合わせて簡単に上書きできます）
+     // From / Reply-To をハードコードしています
      // デフォルトは管理者メールとサイト名を使う
-     /*
-     $default_from_email = get_option('admin_email', 'no-reply@' . ( isset($_SERVER['HTTP_HOST']) ? preg_replace('/^www\./', '', $_SERVER['HTTP_HOST']) : 'localhost' ));
-     $default_from_name  = get_bloginfo( 'name' );
- 
-     // フィルタで上書きを許可（例: add_filter('woca_email_from', fn() => 'no-reply@wallcats.net');）
-     $from_email = apply_filters( 'woca_email_from', $default_from_email );
-     $from_name  = apply_filters( 'woca_email_from_name', $default_from_name );
-*/
+     
      $from_email = 'no-reply@kabeneko.biz';
      $from_name  = 'かべネコVPN';
  
@@ -1442,54 +1406,6 @@ function woca_render_email_modal($order) {
      }
  }
 
- /*
-add_action('wp_ajax_woca_send_order_email', 'woca_send_order_email');
-function woca_send_order_email() {
-    // nonce
-    if ( ! isset($_POST['nonce']) || ! wp_verify_nonce($_POST['nonce'], 'woca_send_email') ) {
-        wp_send_json_error( array('message' => '不正なリクエスト（nonce）。') );
-    }
-
-    // capability (filterable)
-    $capability = apply_filters('woca_email_send_capability', 'edit_posts');
-    if ( ! current_user_can($capability) ) {
-        wp_send_json_error( array('message' => '送信権限がありません。') );
-    }
-
-    $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
-    $to = isset($_POST['to']) ? sanitize_email($_POST['to']) : '';
-    $subject = isset($_POST['subject']) ? sanitize_text_field($_POST['subject']) : '';
-    $body = isset($_POST['body']) ? wp_strip_all_tags($_POST['body']) : '';
-
-    if ( ! $order_id || ! is_email($to) ) {
-        wp_send_json_error( array('message' => '宛先メールアドレスが不正、または注文IDが指定されていません。') );
-    }
-
-    // load order
-    global $wpdb;
-    $order = $wpdb->get_row( $wpdb->prepare("SELECT * FROM {$wpdb->prefix}usces_order WHERE ID = %d", $order_id) );
-
-    // template replacements
-    $subject = woca_render_template_for_order($subject, $order_id, $order);
-    $body = woca_render_template_for_order($body, $order_id, $order);
-
-    // headers: From and Reply-To are hardcoded as before
-    $from_email = 'masomi79@gmail.com';
-    $from_name = 'Masomi Fukuda';
-    $headers = array();
-    $headers[] = 'From: ' . $from_name . ' <' . $from_email . '>';
-    $headers[] = 'Reply-To: ' . $from_email;
-
-    // send (plain text)
-    $sent = wp_mail( $to, $subject, $body, $headers );
-
-    if ( $sent ) {
-        wp_send_json_success( array('message' => 'メールを送信しました。') );
-    } else {
-        wp_send_json_error( array('message' => 'メール送信に失敗しました。サーバのメール設定を確認してください。') );
-    }
-}
-*/
 /**
  * Log wp_mail failures for debugging.
  */
