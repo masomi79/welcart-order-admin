@@ -102,8 +102,6 @@ function generate_search_conditions($wpdb) {
 
     $where_clauses = [];
 
-   
-
     // 条件1の処理
     if ($field1 === "order_payment_name" && $payment_method1 !== '') {
         $where_clauses[] = $wpdb->prepare("`$field1` = %s", $payment_method1);
@@ -129,7 +127,7 @@ function generate_search_conditions($wpdb) {
         }elseif ( $value1 === 'norecibido' ) { // 未入金
             $where = "order_status LIKE '%noreceipt%'";
         }elseif ( $value1 === 'pendiente' ) { // Pending
-            $where = "order_status LIKE '%pending%'";    
+            $where = "order_status LIKE '%pending%'";
         }else{ // その他の入金状況が指定された場合そのまま出力する
             $where = "order_status like '%$value1%'";
         }
@@ -141,11 +139,11 @@ function generate_search_conditions($wpdb) {
         }elseif ( $value1 === 'enproceso' ) { // 取り寄せ中
             $where = "order_status LIKE '%duringorder%'";
         }elseif ( $value1 === 'cancelado' ) { // キャンセル
-            $where = "order_status LIKE '%cancel%'";    
+            $where = "order_status LIKE '%cancel%'";
         }elseif ( $value1 === 'cumplido' ) { // 発送済み
-            $where = "order_status LIKE '%completion%'";   
-        }elseif( $value1 === 'nuevopedido' ) { // 新規受付中 どの文字列も含まない場合、もしくは #none# が含まれる場合
-            $where = "order_status LIKE '%#none#%' OR order_status NOT LIKE '%duringorder%' AND order_status NOT LIKE '%cancel%' AND order_status NOT LIKE '%completion%'"; 
+            $where = "order_status LIKE '%completion%'";
+        }elseif( $value1 === 'nuevopedido' ) {
+            $where = "order_status LIKE '%#none#%' OR order_status NOT LIKE '%duringorder%' AND order_status NOT LIKE '%cancel%' AND order_status NOT LIKE '%completion%'";
         }else{
             $where = "order_status like '%$value1%'";
         }
@@ -185,7 +183,7 @@ function generate_search_conditions($wpdb) {
         }elseif ( $value2 === 'norecibido' ) { // 未入金
             $where = "order_status LIKE '%noreceipt%'";
         }elseif ( $value2 === 'pendiente' ) { // Pending
-            $where = "order_status LIKE '%pending%'";    
+            $where = "order_status LIKE '%pending%'";
         }else{ // その他の入金状況が指定された場合そのまま出力する
             $where = "order_status like '%$value2%'";
         }
@@ -197,11 +195,11 @@ function generate_search_conditions($wpdb) {
         }elseif ( $value2 === 'enproceso' ) { // 取り寄せ中
             $where = "order_status LIKE '%duringorder%'";
         }elseif ( $value2 === 'cancelado' ) { // キャンセル
-            $where = "order_status LIKE '%cancel%'";    
+            $where = "order_status LIKE '%cancel%'";
         }elseif ( $value2 === 'cumplido' ) { // 発送済み
-            $where = "order_status LIKE '%completion%'";   
-        }elseif( $value2 === 'nuevopedido' ) { // 新規受付中 どの文字列も含まない場合、もしくは #none# が含まれる場合
-            $where = "order_status LIKE '%#none#%' OR order_status NOT LIKE '%duringorder%' AND order_status NOT LIKE '%cancel%' AND order_status NOT LIKE '%completion%'"; 
+            $where = "order_status LIKE '%completion%'";
+        }elseif( $value2 === 'nuevopedido' ) { // 新規受付中
+            $where = "order_status LIKE '%#none#%' OR order_status NOT LIKE '%duringorder%' AND order_status NOT LIKE '%cancel%' AND order_status NOT LIKE '%completion%'";
         }else{
             $where = "order_status like '%$value2%'";
         }
@@ -224,6 +222,17 @@ function handle_csv_export() {
     if ( ! isset($_GET['export_csv']) ) {
         return;
     }
+
+    // 権限チェック: 管理者のみ許可
+    if ( ! current_user_can('manage_options') ) {
+        wp_die('権限がありません。');
+    }
+
+    // nonce チェック（GET フォームの nonce 名は _wpnonce_welcart_export）
+    if ( ! isset($_GET['_wpnonce_welcart_export']) || ! check_admin_referer('welcart_export', '_wpnonce_welcart_export') ) {
+        wp_die('不正なリクエストです。');
+    }
+
     global $wpdb;
 
     // period パラメータを取得
@@ -258,7 +267,6 @@ function handle_csv_export() {
         $selected_fields = array_keys($fields_options);
     }
 
-
     $period = '';
     if (!empty($selected_period) && $selected_period !== 'all') {
         $today = current_time('Y-m-d');
@@ -280,18 +288,14 @@ function handle_csv_export() {
         }
     }
 
-    // 検索条件の生成
+    // 検索条件の生成（既存の関数を利用）
     $where_sql = generate_search_conditions($wpdb);
     if ($period) {
         $where_sql .= $period;
     }
 
-
-//    $csv_sql = "SELECT * FROM {$wpdb->prefix}usces_order WHERE $where_sql ORDER BY ID DESC LIMIT 100";
-    $csv_sql = "SELECT * FROM {$wpdb->prefix}usces_order WHERE $where_sql ORDER BY ID DESC";
-
-    // デバッグ用：抽出SQL文をCSVの先頭に書き込む
-    fputcsv($fp, array('SQL: ' . $csv_sql));
+    // デバッグ用：抽出SQL文をCSVの先頭に書き込む（短くする）
+    fputcsv($fp, array('SQL: ' . $where_sql));
     fputcsv($fp, array('Period: ' . $period));
 
     // ヘッダー行の出力
@@ -302,46 +306,58 @@ function handle_csv_export() {
     }
     fputcsv($fp, $header);
 
-    // 検索結果から最新の100件を取得
-    $export_orders = $wpdb->get_results($csv_sql);
-    
-    // カウンターをリセット
-    $i = 0;
+    // チャンク方式で出力する（メモリ保護のため）
+    // 注意: $where_sql は generate_search_conditions の出力をそのまま使うため、安全化は別作業で行う（今回のパッチはチャンク化＆権限／nonce の追加が目的）
+    $chunk = 1000; // 1回で取得する行数（必要に応じて小さくしてください）
+    $offset = 0;
 
-    // 受注データを取得
-    foreach ($export_orders as $order) {
-        $row = array();
-        $i++;
-
-/* デバッグ
-        if ($i <div 2){
-            // デバッグ用：$orderの内容をCSVに出力
-            $debug_order = print_r($order, true);
-            fputcsv($fp, array('Debug Order: ' . $debug_order));    
-
-        }
-*/
-
-
-        $order_id = isset($order->ID) ? $order->ID : '';
-        $row[] = $order_id; // 受注番号を追加
-
-        // 各フィールドの値を取得
-        foreach ($selected_fields as $field) {
-            if ($field === 'csod_coupon') {
-                $row[] = $wpdb->get_var(
-                    $wpdb->prepare(
-                        "SELECT meta_value FROM {$wpdb->prefix}usces_order_meta WHERE order_id = %d AND meta_key = %s",
-                        $order->ID,
-                        'csod_coupon'
-                    )
-                );
-            } else {
-                $row[] = isset($order->$field) ? $order->$field : '';
-            }
-        }
-        fputcsv($fp, $row);
+    // 無制限の長時間処理になる可能性があるためタイムアウト解除
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(0);
     }
+
+    while (true) {
+        $limit = intval($chunk);
+        $ofs = intval($offset);
+
+        // SELECT は必要最小限の列だけ取る（ただし csod_coupon は meta から取得）
+        $sql = "SELECT * FROM {$wpdb->prefix}usces_order WHERE {$where_sql} ORDER BY ID DESC LIMIT {$limit} OFFSET {$ofs}";
+
+        $export_orders = $wpdb->get_results($sql);
+
+        if ( empty($export_orders) ) {
+            break;
+        }
+
+        foreach ($export_orders as $order) {
+            $row = array();
+            $order_id = isset($order->ID) ? $order->ID : '';
+            $row[] = $order_id;
+
+            foreach ($selected_fields as $field) {
+                if ($field === 'csod_coupon') {
+                    $row[] = $wpdb->get_var(
+                        $wpdb->prepare(
+                            "SELECT meta_value FROM {$wpdb->prefix}usces_order_meta WHERE order_id = %d AND meta_key = %s",
+                            $order->ID,
+                            'csod_coupon'
+                        )
+                    );
+                } else {
+                    $row[] = isset($order->$field) ? $order->$field : '';
+                }
+            }
+            fputcsv($fp, $row);
+        }
+
+        // flush to the client and free memory
+        if (function_exists('ob_flush')) { @ob_flush(); }
+        if (function_exists('flush')) { @flush(); }
+
+        // advance
+        $offset += $chunk;
+    }
+
     fclose($fp);
     exit;
 }
@@ -513,6 +529,7 @@ function custom_show_welcart_orders() {
     echo '<button id="csv_export_btn" class="button" style="margin-top:10px;">CSV出力</button>';
     echo '<div id="csv_export_container" style="display:none; margin-top:10px;">';
     echo '<form id="csv_export_form" method="get" action="">';
+    echo wp_nonce_field('welcart_export', '_wpnonce_welcart_export', true, false);
     echo '<input type="hidden" name="page" value="welcart-order-admin">';
     echo '<input type="hidden" name="export_csv" value="1">';
 
