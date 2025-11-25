@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.40
+Version: 1.41
 Author: masomi79
 */
 
@@ -1281,7 +1281,7 @@ function woca_render_template_for_order($template_text, $order_id, $order_obj = 
         '%ORDER_ITEMS%'   => woca_get_order_items_text($order_id),
         '%ORDER_DATE%'    => $order_date,
         '%ORDER_URL%'     => admin_url('admin.php?page=welcart-order-admin-detail&order_id=' . intval($order_id)),
-        '%ORDER_NAME1%'   => $order_name1,
+//        '%ORDER_NAME1%'   => $order_name1,
     );
 
     return str_replace(array_keys($replacements), array_values($replacements), $template_text);
