@@ -1,0 +1,11 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = true
+[remote "origin"]
+	url = git@gitlab.com:masomi79/wp_order_admin.git
+	fetch = +refs/*:refs/*
+	mirror = true
+[remote "github"]
+	url = git@github.com:masomi79/welcart-order-admin.git
+	fetch = +refs/heads/*:refs/remotes/github/*

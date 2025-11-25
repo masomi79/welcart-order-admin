@@ -653,7 +653,7 @@ function custom_show_welcart_orders() {
             // echo '<td>' . esc_html($order->order_status) . '</td>';
             // 対応状況表示
 
-            if (!($taio_status) | $taio_status === "#none#") {
+            if (!($taio_status) || $taio_status === "#none#") {
                 $display_taio = "新規受付中";
             } elseif ($taio_status === "duringorder") {
                 $display_taio = "取り寄せ中";
