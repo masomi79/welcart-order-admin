@@ -50,7 +50,7 @@ jQuery(document).ready(function($) {
 	if(recalcBtn.length) {
 		recalcBtn.on("click", function(){
 			var overallInput = $("#overall_total_input");
-			var baseTotal = parseFloat(overallInput.data("base-total")) || 0;
+			var baseTotal = parseFloat(overallInput.text("base-total")) || 0;
 			var couponVal = parseFloat($("#coupon_amount input").val()) || 0;
 			overallInput.val(baseTotal + couponVal);
 		});

@@ -1,4 +1,4 @@
-/* werlcart--admin-scripts.js version: 1.02*/
+/* werlcart--admin-scripts.js version: 1.06*/
 
 jQuery(document).ready(function($) {
 	// 統一されたフィールド切替関数（php出力のセレクトボックスを単に表示/非表示に切替）
@@ -51,7 +51,8 @@ jQuery(document).ready(function($) {
 			var overallInput = $("#overall_total_input");
 			var baseTotal = parseFloat(overallInput.data("base-total")) || 0;
 			var couponVal = parseFloat($("#coupon_amount input").val()) || 0;
-			overallInput.val(baseTotal + couponVal);
+			var newTotal = baseTotal + couponVal;
+			overallInput.text(newTotal.toLocaleString());
 		});
 	}
 

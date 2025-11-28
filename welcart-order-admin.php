@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.44
+Version: 1.46
 Author: masomi79
 */
 
@@ -827,7 +827,7 @@ function update_welcart_order() {
         'order_payment_name' => sanitize_text_field($_POST['order_payment_name']),
         'order_discount' => sanitize_text_field($_POST['order_discount']),
         'order_email' => sanitize_text_field($_POST['order_email'])
-//更新しない        'order_item_total_price' => sanitize_text_field($_POST['order_item_total_price'])
+        //更新しない  'order_item_total_price' => sanitize_text_field($_POST['order_item_total_price'])
     );
 
     $wpdb->update(
@@ -1096,14 +1096,19 @@ function custom_show_welcart_order_detail() {
         foreach ($items as $item) {
             echo '<tr>';
             echo '<td class="title">' . esc_html($item->item_name) . '</td>';
-            echo '<td>' . esc_html(round($item->price)) . '</td>';
-            echo '<td>' . esc_html(round($item->price * $item->quantity)) . '</td>';
+            echo '<td>' . esc_html(number_format(round($item->price))) . '</td>';
+            echo '<td>' . esc_html(number_format(round($item->price * $item->quantity))) . '</td>';
             echo '</tr>';
             $subtotal_price += $item->price * $item->quantity;
         }
-        echo '<tr><td colspan="2">小計</td><td id="subtotal_price"><input type="hidden" name="subtotal_price" value="' . esc_attr(round($subtotal_price)) . '">' . esc_attr(round($subtotal_price)) . '</td></tr>';
+        
+        echo '<tr><td colspan="2">小計</td><td id="subtotal_price"><input type="hidden" name="subtotal_price" value="' . esc_attr(round($subtotal_price)) . '">' . esc_attr(number_format(round($subtotal_price))) . '</td></tr>';
         echo '<tr><td colspan="2">クーポン割引</td><td id="coupon_amount"><input type="text" name="order_discount" value="' . esc_attr(round($order_discount)) . '" style="width:100%"><span>※割引は-(マイナス)で入力します</span></td></tr>';
-        echo '<tr><td colspan="2">総合計金額</td><td id="total_price"><input type="text" id="overall_total_input" name="order_item_total_price" value="' . esc_html(round($order_total_price)) . '" data-base-total="' . esc_html(round($subtotal_price)) . '" style="width:70%"><button type="button" id="recalculate_btn" style="width:28%">再計算</button></td></tr>';
+        echo '<tr><td colspan="2">総合計金額</td><td id="total_price" style="background-color: black;color: #efefef;line-height: 1.6;">';
+    //    echo '<input type="text" id="overall_total_input" name="order_item_total_price" value="' . esc_html(round($order_total_price)) . '" data-base-total="' . esc_html(round($subtotal_price)) . '" style="width:70%">';
+        echo '<span id="overall_total_input" name="order_item_total_price" data-base-total="' . esc_html(round($subtotal_price)) . '" style="width:70%; margin-right:2rem; font-stile:bold; font-size:1.6rem;">' . esc_html(number_format(round($order_total_price))) . '</span>';
+        echo '<button type="button" id="recalculate_btn" style="width:28%">再計算</button>';
+        echo '</td></tr>';
         echo '</tbody></table>';
     }
 
@@ -1151,12 +1156,10 @@ function woca_get_default_email_templates() {
 注文日時 : %ORDER_DATE% 
 お申し込みプラン :
 ------------------------------------------------------------------
-VPN 1ヶ月プラン
-料金 ¥880 x 1
+%ORDER_ITEMS%
 =============================================
-商品合計 : ¥
-キャンペーン割引 : ¥
-送料 : ¥0
+商品合計 : ¥%ORDER_ITEM_TOTAL%
+キャンペーン割引 : ¥%ORDER_DISCOUNT%
 ------------------------------------------------------------------
 お支払い金額 : ¥%ORDER_TOTAL%
 ------------------------------------------------------------------
@@ -1296,20 +1299,26 @@ function woca_render_template_for_order($template_text, $order_id, $order_obj = 
     if ( ! $order_obj ) {
         $order_obj = $wpdb->get_row( $wpdb->prepare("SELECT * FROM {$wpdb->prefix}usces_order WHERE ID = %d", $order_id ) );
     }
+
+    $order_discount = '';
     $order_total = '';
     $order_date = '';
     if ( $order_obj ) {
-        $order_total = isset($order_obj->order_item_total_price) ? round($order_obj->order_item_total_price) : '';
+        $order_item_total = isset($order_obj->order_item_total_price) ? round($order_obj->order_item_total_price) : '';
+        $order_discount = isset($order_obj->order_discount);
+        $order_total = $order_item_total + $order_discount;
         $order_date = isset($order_obj->order_date) ? $order_obj->order_date : '';
     }
 
     $replacements = array(
         '%ORDER_ID%'      => $order_id,
         '%CUSTOMER_NAME%' => woca_get_order_customer_name($order_id, $order_obj),
+        '%ORDER_ITEM_TOTAL%' => $order_item_total,
         '%ORDER_TOTAL%'   => $order_total,
         '%ORDER_ITEMS%'   => woca_get_order_items_text($order_id),
         '%ORDER_DATE%'    => $order_date,
         '%ORDER_URL%'     => admin_url('admin.php?page=welcart-order-admin-detail&order_id=' . intval($order_id)),
+        '%ORDER_DISCOUNT%'=> $order_discount,
 //        '%ORDER_NAME1%'   => $order_name1,
     );
 
