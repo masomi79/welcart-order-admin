@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.41
+Version: 1.44
 Author: masomi79
 */
 
@@ -47,6 +47,16 @@ pending:Pending
 管理者メモ,"meta_key:"order_memo"
 決済ID,"meta_key:"settlement_id"
 クーポン値,"meta_key:"csod_coupon"
+
+20251128 注文詳細画面でのクーポン割引の扱い
+オリジナルの管理画面では総合計金額は直接更新せず、都度画面上でクーポン割引を差し引いて表示しているとみられる。
+この方法をプラグインでも踏襲する
+
+
+総合計金額：order_item_total_price (decimal(10,2))
+クーポン割引：order_discount (decimal(10,2))
+order_tax (decimal(10,2))
+
 */
 
 // 安全対策: WordPressの環境でのみ動作させる
@@ -343,6 +353,10 @@ function handle_csv_export() {
                             'csod_coupon'
                         )
                     );
+                } elseif ($field === 'order_item_total_price') {
+                    $total   = isset($order->order_item_total_price) ? $order->order_item_total_price : 0;
+                    $discount = isset($order->order_discount) ? $order->order_discount : 0;
+                    $row[] = $total + $discount;
                 } else {
                     $row[] = isset($order->$field) ? $order->$field : '';
                 }
@@ -696,7 +710,13 @@ function custom_show_welcart_orders() {
                 $display_receipt = "Pending";
             }
             echo '<td' . $receipt_style . '>' . esc_html($display_receipt) . '</td>';
-            echo '<td>' . esc_html(round($order->order_item_total_price)) . '</td>';
+
+            //割引適用後の合計金額
+            $order_discount = $order->order_discount;
+            $order_item_total_price = $order->order_item_total_price;
+            $order_total_price = $order_item_total_price + $order_discount;
+
+            echo '<td>' . esc_html(round($order_total_price)) . '</td>';
             echo '<td>' . esc_html($order->mem_id) . '</td>';
             echo '<td>' . esc_html($order->order_email) . '</td>';
             echo '<td>' . esc_html($order->order_note) . '</td>';
@@ -806,8 +826,8 @@ function update_welcart_order() {
         'order_status' => $combined_status,
         'order_payment_name' => sanitize_text_field($_POST['order_payment_name']),
         'order_discount' => sanitize_text_field($_POST['order_discount']),
-        'order_email' => sanitize_text_field($_POST['order_email']),
-        'order_item_total_price' => sanitize_text_field($_POST['order_item_total_price'])
+        'order_email' => sanitize_text_field($_POST['order_email'])
+//更新しない        'order_item_total_price' => sanitize_text_field($_POST['order_item_total_price'])
     );
 
     $wpdb->update(
@@ -868,6 +888,7 @@ function update_welcart_order() {
 add_action('admin_init', 'update_welcart_order');
 
 // 詳細画面を表示する関数
+// 20251128 送金額の表示方法の変更
 function custom_show_welcart_order_detail() {
     global $wpdb;
     $order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
@@ -936,6 +957,11 @@ function custom_show_welcart_order_detail() {
         )
     );
 
+    //　割引の適用
+    $order_discount = $order->order_discount;
+    $order_item_total_price = $order->order_item_total_price;
+    $order_total_price = $order_item_total_price + $order_discount;
+
     // 決済IDの取得
     $settlement_id = $wpdb->get_var(
         $wpdb->prepare(
@@ -960,6 +986,8 @@ function custom_show_welcart_order_detail() {
     echo '<h2>注文詳細</h2>';
 
     //デバッグ用表示
+    echo $csod_coupon;
+    /*
     echo '<p>';
     echo '<span>入金・対応ステータスの値(デバッグ用)</span><br>';
     echo 'order_status_row:' . $order_status_raw . '</br>';
@@ -967,6 +995,7 @@ function custom_show_welcart_order_detail() {
     echo 'receipt_status:' . $receipt_status . '</br>';
     echo 'taio_status:' . $taio_status . '</br>';
     echo '</p>';
+    */
 
     echo '<p>';
     echo '<button id="woca-open-email-modal-btn" class="button">メール送信</button>';
@@ -1073,8 +1102,8 @@ function custom_show_welcart_order_detail() {
             $subtotal_price += $item->price * $item->quantity;
         }
         echo '<tr><td colspan="2">小計</td><td id="subtotal_price"><input type="hidden" name="subtotal_price" value="' . esc_attr(round($subtotal_price)) . '">' . esc_attr(round($subtotal_price)) . '</td></tr>';
-        echo '<tr><td colspan="2">クーポン割引</td><td id="coupon_amount"><input type="text" name="order_discount" value="' . esc_attr(round($order->order_discount)) . '" style="width:100%"><span>※割引は-(マイナス)で入力します</span></td></tr>';
-        echo '<tr><td colspan="2">総合計金額</td><td id="total_price"><input type="text" id="overall_total_input" name="order_item_total_price" value="' . esc_html(round($order->order_item_total_price)) . '" data-base-total="' . esc_html(round($subtotal_price)) . '" style="width:70%"><button type="button" id="recalculate_btn" style="width:28%">再計算</button></td></tr>';
+        echo '<tr><td colspan="2">クーポン割引</td><td id="coupon_amount"><input type="text" name="order_discount" value="' . esc_attr(round($order_discount)) . '" style="width:100%"><span>※割引は-(マイナス)で入力します</span></td></tr>';
+        echo '<tr><td colspan="2">総合計金額</td><td id="total_price"><input type="text" id="overall_total_input" name="order_item_total_price" value="' . esc_html(round($order_total_price)) . '" data-base-total="' . esc_html(round($subtotal_price)) . '" style="width:70%"><button type="button" id="recalculate_btn" style="width:28%">再計算</button></td></tr>';
         echo '</tbody></table>';
     }
 
