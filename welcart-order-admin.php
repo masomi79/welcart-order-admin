@@ -1328,7 +1328,7 @@ function woca_render_template_for_order($template_text, $order_id, $order_obj = 
         '%ORDER_DATE%'    => $order_date,
         '%ORDER_URL%'     => admin_url('admin.php?page=welcart-order-admin-detail&order_id=' . intval($order_id)),
         '%ORDER_DISCOUNT%'=> $order_discount,
-        '%ORDER_PAYMENT_NAME' => $order_payment_name,
+        '%ORDER_PAYMENT_NAME%' => $order_payment_name,
         '%ORDER_SET_ID%'  => $order_settlement_id,
 //        '%ORDER_NAME1%'   => $order_name1,
     );
