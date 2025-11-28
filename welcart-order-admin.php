@@ -1301,9 +1301,10 @@ function woca_render_template_for_order($template_text, $order_id, $order_obj = 
     $order_total = '';
     $order_date = '';
     if ( $order_obj ) {
-        $order_item_total = isset($order_obj->order_item_total_price) ? number_format(round($order_obj->order_item_total_price)) : '';
-        $order_discount = isset($order_obj->order_discount) ? number_format(round($order_obj->order_discount)) : '';
-        $order_total = number_format($order_item_total + $order_discount);
+
+        $item_total = isset($order_obj->order_item_total_price) ? round($order_obj->order_item_total_price) : 0;
+        $discount   = isset($order_obj->order_discount) ? round($order_obj->order_discount) : 0;
+        $order_total = $item_total + $discount; // 割引はマイナス値なのでOK
         $order_date = isset($order_obj->order_date) ? $order_obj->order_date : '';
         $order_payment_name = isset($order_obj->order_payment_name) ? $order_obj->order_payment_name : '';
     }
