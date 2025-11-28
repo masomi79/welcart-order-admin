@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.46
+Version: 1.47
 Author: masomi79
 */
 
@@ -1158,23 +1158,19 @@ function woca_get_default_email_templates() {
 ------------------------------------------------------------------
 %ORDER_ITEMS%
 =============================================
-商品合計 : ¥%ORDER_ITEM_TOTAL%
-キャンペーン割引 : ¥%ORDER_DISCOUNT%
+商品合計 : %ORDER_ITEM_TOTAL%
+キャンペーン割引 : %ORDER_DISCOUNT%
 ------------------------------------------------------------------
-お支払い金額 : ¥%ORDER_TOTAL%
+お支払い金額 : %ORDER_TOTAL%
 ------------------------------------------------------------------
  (通貨 : 円)
 
 【お支払方法】
 ******************************************************
-%ORDER_ID%
-******************************************************
-カート用受注識別コード ; %ORDER_ID% 
+%ORDER_PAYMENT_NAME%
+%ORDER_SET_ID% 
 ******************************************************
 
-【その他】
-******************************************************
-%ORDER_ID%
 
 かべネコVPN
 =============================================
@@ -1286,7 +1282,8 @@ function woca_get_order_items_text($order_id) {
 
     $lines = array();
     foreach ( $rows as $r ) {
-        $lines[] = sprintf("%s × %d   単価: %s   金額: %s", $r->item_name, intval($r->quantity), round($r->price), round($r->price * $r->quantity));
+        // $lines[] = sprintf("%s × %d   単価: %s   金額: %s", $r->item_name, intval($r->quantity), round($r->price), round($r->price * $r->quantity));
+        $lines[] = sprintf("%s × %d   ", $r->item_name, intval($r->quantity), round($r->price), round($r->price * $r->quantity));
     }
     return implode("\n", $lines);
 }
@@ -1304,11 +1301,22 @@ function woca_render_template_for_order($template_text, $order_id, $order_obj = 
     $order_total = '';
     $order_date = '';
     if ( $order_obj ) {
-        $order_item_total = isset($order_obj->order_item_total_price) ? round($order_obj->order_item_total_price) : '';
-        $order_discount = isset($order_obj->order_discount);
-        $order_total = $order_item_total + $order_discount;
+        $order_item_total = isset($order_obj->order_item_total_price) ? number_format(round($order_obj->order_item_total_price)) : '';
+        $order_discount = isset($order_obj->order_discount) ? number_format(round($order_obj->order_discount)) : '';
+        $order_total = number_format($order_item_total + $order_discount);
         $order_date = isset($order_obj->order_date) ? $order_obj->order_date : '';
+        $order_payment_name = isset($order_obj->order_payment_name) ? $order_obj->order_payment_name : '';
     }
+
+    // 決済IDの取得
+    $settlement_id = $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT meta_value FROM vwp_usces_order_meta WHERE order_id = %d AND meta_key = %s",
+            $order_id,
+            'settlement_id'
+        )
+    );
+    $order_settlement_id = isset($settlement_id) ? 'カート用受注識別コード ; ' . $settlement_id : '';
 
     $replacements = array(
         '%ORDER_ID%'      => $order_id,
@@ -1319,6 +1327,8 @@ function woca_render_template_for_order($template_text, $order_id, $order_obj = 
         '%ORDER_DATE%'    => $order_date,
         '%ORDER_URL%'     => admin_url('admin.php?page=welcart-order-admin-detail&order_id=' . intval($order_id)),
         '%ORDER_DISCOUNT%'=> $order_discount,
+        '%ORDER_PAYMENT_NAME' => $order_payment_name,
+        '%ORDER_SET_ID%'  => $order_settlement_id,
 //        '%ORDER_NAME1%'   => $order_name1,
     );
 
