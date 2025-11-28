@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.48
+Version: 1.49
 Author: masomi79
 */
 
@@ -1302,8 +1302,8 @@ function woca_render_template_for_order($template_text, $order_id, $order_obj = 
     $order_date = '';
     if ( $order_obj ) {
 
-        $item_total = isset($order_obj->order_item_total_price) ? round($order_obj->order_item_total_price) : 0;
-        $discount   = isset($order_obj->order_discount) ? round($order_obj->order_discount) : 0;
+        $order_item_total = isset($order_obj->order_item_total_price) ? round($order_obj->order_item_total_price) : 0;
+        $order_discount   = isset($order_obj->order_discount) ? round($order_obj->order_discount) : 0;
         $order_total = $item_total + $discount; // 割引はマイナス値なのでOK
         $order_date = isset($order_obj->order_date) ? $order_obj->order_date : '';
         $order_payment_name = isset($order_obj->order_payment_name) ? $order_obj->order_payment_name : '';
