@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.50
+Version: 1.51
 Author: masomi79
 */
 
@@ -357,6 +357,16 @@ function handle_csv_export() {
                     $total   = isset($order->order_item_total_price) ? $order->order_item_total_price : 0;
                     $discount = isset($order->order_discount) ? $order->order_discount : 0;
                     $row[] = $total + $discount;
+                } elseif ($field === 'order_status'){
+                    if ( strpos($order->order_status, 'receipted') !== false ) {
+                        $row[] = '入金済み';
+                    } elseif ( strpos($order->order_status, 'noreceipt') !== false ) {
+                        $row[] = '未入金';
+                    } elseif ( strpos($order->order_status, 'pending') !== false ) {
+                        $row[] = 'Pending';
+                    } else {
+                        $row[] = '未入金';
+                    }
                 } else {
                     $row[] = isset($order->$field) ? $order->$field : '';
                 }
@@ -708,7 +718,10 @@ function custom_show_welcart_orders() {
                 $display_receipt = "入金済み";
             } elseif ($receipt_status === "pending") {
                 $display_receipt = "Pending";
+                $receipt_style = ' style="color:red;"';
             }
+
+
             echo '<td' . $receipt_style . '>' . esc_html($display_receipt) . '</td>';
 
             //割引適用後の合計金額
@@ -887,8 +900,13 @@ function update_welcart_order() {
 }
 add_action('admin_init', 'update_welcart_order');
 
+//////////////////////////////////////
+// custom_show_welcart_order_detail
 // 詳細画面を表示する関数
+// 値を更新するフォームを表示する
 // 20251128 送金額の表示方法の変更
+// 20251129 ステータス表示の修正
+//////////////////////////////////////
 function custom_show_welcart_order_detail() {
     global $wpdb;
     $order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
@@ -914,9 +932,25 @@ function custom_show_welcart_order_detail() {
     }
 
     //対応状況と入金情報の処理
+
+
+
+
     $order_status_raw = trim($order->order_status);
     $taio_status = '';
     $receipt_status = '';
+
+
+    //デバッグ用表示
+    echo '<p>';
+    echo '<span>入金・対応ステータスの値(デバッグ用)・処理前</span><br>';
+    echo 'order_status_row:' . $order_status_raw . '</br>';
+    echo 'order_status:' . $order->order_status . '</br>';
+    echo 'receipt_status:' . $receipt_status . '</br>';
+    echo 'taio_status:' . $taio_status . '</br>';
+    echo '</p>';
+
+
     if (!empty($order_status_raw)) {
         // カンマ区切りの場合は分割して"adminorder"を除去
         $parts = explode(',', $order_status_raw);
@@ -933,11 +967,52 @@ function custom_show_welcart_order_detail() {
             $receipt_status = $filtered[1];
         }
     } else {
-        $receipt_status = 'noreceipt';
+    //    $receipt_status = 'noreceipt';
     }
-    if (empty($taio_status)) {
+
+    //もし $taio_statusがempty もしくは 'cancel'、'#none#' 以外の値であったなら
+    if (empty($taio_status) || ($taio_status !== 'cancel' && $taio_status !== '#none#')) {
         $taio_status = "#none#";
     }
+
+
+    //もし $taio_statusが”#none”もしくは"cancel"でなかったら
+    // $order_statusを調べて対応状況を示唆する文字列があれば代入する
+    
+    if ($taio_status !== '#none' && $taio_status !== 'cancel') {
+        if (strpos($order_status_raw, 'cancel') !== false) {
+            $taio_status = 'cancel';
+        }elseif (strpos($order_status_raw, '#none#') !== false) {
+            $taio_status = '#none#';
+        }
+    }
+    
+
+    
+    //もし $receipt_statusが空の文字列もしくは 'receipted', 'pending', 'noreceipt' 以外の文字列であったなら
+    //(オリジナルでステータスを編集した場合に生じる模様)
+    //$order_statusを調べて入金状況を示唆する文字列があれば代入する
+    if ($receipt_status === '' || ($receipt_status !== 'receipted' && $receipt_status !== 'pending' && $receipt_status !== 'noreceipt')) {
+        if (strpos($order_status_raw, 'receipted') !== false) {
+            $receipt_status = 'receipted';
+        } elseif (strpos($order_status_raw, 'pending') !== false) {
+            $receipt_status = 'pending';
+        } else {
+
+            // receipted, pending がなければ未入金の状態
+            // $receipt_status = 'noreceipt';
+        }
+    }
+
+
+    //デバッグ用表示
+    echo '<p>';
+    echo '<span>入金・対応ステータスの値(デバッグ用)・処理後</span><br>';
+    echo 'order_status_row:' . $order_status_raw . '</br>';
+    echo 'order_status:' . $order->order_status . '</br>';
+    echo 'receipt_status:' . $receipt_status . '</br>';
+    echo 'taio_status:' . $taio_status . '</br>';
+    echo '</p>';
 
     // 管理者メモの取得（vwp_usces_order_metaテーブル）
     $admin_memo = $wpdb->get_var(
@@ -985,17 +1060,6 @@ function custom_show_welcart_order_detail() {
     echo '<div class="wrap">';
     echo '<h2>注文詳細</h2>';
 
-    //デバッグ用表示
-    echo $csod_coupon;
-    /*
-    echo '<p>';
-    echo '<span>入金・対応ステータスの値(デバッグ用)</span><br>';
-    echo 'order_status_row:' . $order_status_raw . '</br>';
-    echo 'order_status:' . $order->order_status . '</br>';
-    echo 'receipt_status:' . $receipt_status . '</br>';
-    echo 'taio_status:' . $taio_status . '</br>';
-    echo '</p>';
-    */
 
     echo '<p>';
     echo '<button id="woca-open-email-modal-btn" class="button">メール送信</button>';
