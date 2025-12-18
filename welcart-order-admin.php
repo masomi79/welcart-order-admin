@@ -850,6 +850,7 @@ function update_welcart_order() {
     );
 
     // 管理者メモの更新処理
+    /*
     if (isset($_POST['order_memo'])) {
         $new_memo = sanitize_textarea_field($_POST['order_memo']);
         $wpdb->replace(
@@ -861,6 +862,34 @@ function update_welcart_order() {
             ),
             array('%d', '%s', '%s')
         );
+    }
+    */
+    // 管理者メモの更新処理
+    if (isset($_POST['order_memo'])) {
+        $new_memo = sanitize_textarea_field($_POST['order_memo']);
+        $meta_exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM vwp_usces_order_meta WHERE order_id = %d AND meta_key = %s",
+            $order_id, 'order_memo'
+        ));
+        if ($meta_exists) {
+            $wpdb->update(
+                'vwp_usces_order_meta',
+                array('meta_value' => $new_memo),
+                array('order_id' => $order_id, 'meta_key' => 'order_memo'),
+                array('%s'),
+                array('%d','%s')
+            );
+        } else {
+            $wpdb->insert(
+                'vwp_usces_order_meta',
+                array(
+                    'order_id'   => $order_id,
+                    'meta_key'   => 'order_memo',
+                    'meta_value' => $new_memo,
+                ),
+                array('%d','%s','%s')
+            );
+        }
     }
 
     // クーポンの更新処理（初期値がない場合でも上書きするため、存在チェックしてupdate/insertを分岐）
