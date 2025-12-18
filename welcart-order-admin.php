@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.51
+Version: 1.52
 Author: masomi79
 */
 
