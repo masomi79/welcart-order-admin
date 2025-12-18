@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.52
+Version: 1.52.1
 Author: masomi79
 */
 
@@ -233,8 +233,9 @@ function handle_csv_export() {
         return;
     }
 
-    // 権限チェック: 管理者のみ許可
-    if ( ! current_user_can('manage_options') ) {
+    // 権限チェック: 編集者以上のみ許可
+    //    if ( ! current_user_can('manage_options') ) {
+    if ( ! current_user_can('edit_pages') ) {
         wp_die('権限がありません。');
     }
 
@@ -801,6 +802,12 @@ function custom_delete_order() {
     if (!isset($_GET['delete_order'])) {
         return;
     }
+
+    //権限のチェック
+    if ( ! current_user_can('edit_pages') ) {
+        wp_die('権限がありません。');
+    }
+
     global $wpdb;
     $order_id = intval($_GET['delete_order']);
     if (!isset($_GET['_wpnonce']) || !wp_verify_nonce($_GET['_wpnonce'], 'delete_order_' . $order_id)) {
@@ -817,6 +824,11 @@ add_action('admin_init', 'custom_delete_order');
 function update_welcart_order() {
     if (!isset($_POST['update_order']) || !isset($_POST['order_id'])) {
         return;
+    }
+
+    //権限のチェック
+    if ( ! current_user_can('edit_pages') ) {
+        wp_die('権限がありません。');
     }
 
     if (!check_admin_referer('update_welcart_order')) {
@@ -929,14 +941,14 @@ function update_welcart_order() {
 }
 add_action('admin_init', 'update_welcart_order');
 
-//////////////////////////////////////
-// custom_show_welcart_order_detail
-// 詳細画面を表示する関数
-// 値を更新するフォームを表示する
-// 20251128 送金額の表示方法の変更
-// 20251129 ステータス表示の修正
-//////////////////////////////////////
 function custom_show_welcart_order_detail() {
+    //////////////////////////////////////
+    // custom_show_welcart_order_detail
+    // 詳細画面を表示する関数
+    // 値を更新するフォームを表示する
+    // 20251128 送金額の表示方法の変更
+    // 20251129 ステータス表示の修正
+    //////////////////////////////////////
     global $wpdb;
     $order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
     if (!$order_id) {
@@ -1503,7 +1515,7 @@ function woca_render_email_modal($order) {
      }
  
      // capability (filterable)
-     $capability = apply_filters('woca_email_send_capability', 'edit_posts');
+     $capability = apply_filters('woca_email_send_capability', 'edit_pages');
      if ( ! current_user_can($capability) ) {
          wp_send_json_error( array('message' => '送信権限がありません。') );
      }
@@ -1596,7 +1608,8 @@ add_action('admin_menu', function() {
     add_menu_page(
         'Welcart Order Admin',         // ページタイトル
         'Welcart 受注管理',            // メニュータイトル
-        'manage_options',              // 権限
+    //    'manage_options',              // 権限
+        'edit_pages',
         'welcart-order-admin',         // スラッグ
         'custom_show_welcart_orders',  // 表示する関数
         'dashicons-list-view',         // アイコン
@@ -1608,7 +1621,8 @@ add_action('admin_menu', function() {
         null,                               // 親メニューを表示しない
         'Welcart Order Detail',             // ページタイトル
         'Welcart Order Detail',             // メニュータイトル(表示しない)
-        'manage_options',                   // 権限
+    //  'manage_options',
+        'edit_pages',                   // 権限
         'welcart-order-admin-detail',       // サブメニューのスラッグ
         'custom_show_welcart_order_detail'  // 表示関数
     );
