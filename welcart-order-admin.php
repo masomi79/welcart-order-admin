@@ -2,7 +2,7 @@
 /*
 Plugin Name: Welcart Order Admin
 Description: Welcartの受注管理を表示するプラグイン
-Version: 1.52.1
+Version: 1.52.2
 Author: masomi79
 */
 
@@ -711,15 +711,19 @@ function custom_show_welcart_orders() {
             // 入金状況の表示
             $receipt_style = '';
             $display_receipt = $receipt_status;
-            if ($receipt_status === "noreceipt") {
-                $display_receipt = "未入金";
-                $receipt_style = ' style="color:red;"';
-            } elseif ($receipt_status === "receipted") {
-                $receipt_style = ' style="color:green;"';
-                $display_receipt = "入金済み";
-            } elseif ($receipt_status === "pending") {
-                $display_receipt = "Pending";
-                $receipt_style = ' style="color:red;"';
+            if (strpos($order->order_payment_name, "クレジット") !== false){
+                $display_receipt = "";
+            }else{
+                if ($receipt_status === "noreceipt") {
+                    $display_receipt = "未入金";
+                    $receipt_style = ' style="color:red;"';
+                } elseif ($receipt_status === "receipted") {
+                    $receipt_style = ' style="color:green;"';
+                    $display_receipt = "入金済み";
+                } elseif ($receipt_status === "pending") {
+                    $display_receipt = "Pending";
+                    $receipt_style = ' style="color:red;"';
+                }
             }
 
 
@@ -1115,7 +1119,9 @@ function custom_show_welcart_order_detail() {
     echo ' <a href="' . admin_url('admin.php?page=welcart-order-admin') . '" class="button">戻る</a>';
     echo '</p>';
     echo '<p class="submit-buttons-wrap">値を変更した場合は必ず最後に「設定を更新」ボタンを押してください。</p>';
-    echo '<table class="widefat fixed welcart-order-detail order-detail-table">';
+    echo '<table class="widefat fixed welcart-order-detail order-detail-table order-admin-detail-table" id="order-detail-';
+    echo esc_html($order->ID);
+    echo '">';
     echo '<thead><tr><th class="title">項目</th><th class="content">詳細</th></tr></thead>';
     echo '<tbody>';
     echo '<tr><td>管理者メモ</td><td><textarea name="order_memo" rows="5" style="width:100%">' . esc_textarea($admin_memo) . '</textarea></td></tr>';
@@ -1153,18 +1159,31 @@ function custom_show_welcart_order_detail() {
         "receipted",
         "pending"
     ];
-    echo '<tr><td>入金状況</td><td>';
-    echo '<select name="receipt_status" style="width:100%">';
-    echo '<option value=""></option>';
-    foreach ($receipt_status_options as $opt) {
-         // $opt の中にカンマがある場合は、取得したreceipt_statusと比較
-         $selected_value = (strpos($opt, ',') !== false) ? $receipt_status : $opt;
-         $label = isset($receipt_map[$opt]) ? $receipt_map[$opt] : $opt;
-         // なお、selectの値自体は変更後の保存用に元の $opt を利用 (必要に応じて別途処理してください)
-         echo '<option value="' . esc_attr($opt) . '" ' . selected($receipt_status, $selected_value, false) . '>' . esc_html($label) . '</option>';
-    }
-    echo '</select>';
-    echo '</td></tr>';
+
+    // 支払い方法がクレジットではない場合、入金状況を表示する
+
+    echo '<tr class="order_detail_receipt_status" data-payment-type="' . (strpos($order->order_payment_name, 'クレジット') !== false ? 'credit' : 'other') . '"><td>入金状況</td><td>';
+        /*
+        echo '<tr class="order_detail_receipt_status" ';
+        echo 'data-payment-type="';
+        if(strpos($order->payment_name, "クレジット") !== false){
+            echo 'credit';
+        }else{
+            echo 'other';
+        }
+        echo '"><td>入金状況</td><td>';
+        */
+        echo '<select name="receipt_status" style="width:100%">';
+        echo '<option value=""></option>';
+        foreach ($receipt_status_options as $opt) {
+            // $opt の中にカンマがある場合は、取得したreceipt_statusと比較
+            $selected_value = (strpos($opt, ',') !== false) ? $receipt_status : $opt;
+            $label = isset($receipt_map[$opt]) ? $receipt_map[$opt] : $opt;
+            // なお、selectの値自体は変更後の保存用に元の $opt を利用 (必要に応じて別途処理してください)
+            echo '<option value="' . esc_attr($opt) . '" ' . selected($receipt_status, $selected_value, false) . '>' . esc_html($label) . '</option>';
+        }
+        echo '</select>';
+        echo '</td></tr>';
 
     // 対応状況（taio_status）の表示
     $taio_map = [

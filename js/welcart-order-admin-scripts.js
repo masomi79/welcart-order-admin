@@ -1,4 +1,4 @@
-/* werlcart--admin-scripts.js version: 1.06*/
+/* werlcart--admin-scripts.js version: 1.07*/
 
 jQuery(document).ready(function($) {
 	// 統一されたフィールド切替関数（php出力のセレクトボックスを単に表示/非表示に切替）
@@ -59,6 +59,21 @@ jQuery(document).ready(function($) {
 	// CSV出力フォームの切替
 	$("#csv_export_btn").on("click", function(){
 		$("#csv_export_container").toggle();
+	});
+
+	// 注文詳細ページで支払い方法の選択があった時に発火し、入金ステータスの行のdata属性を変更する
+	// 支払い方法の値の取得
+	const $payment = $('select[name="order_payment_name"]');
+	// 入金状況の行
+	const $row = $('.order_detail_receipt_status');
+
+	if (!$payment.length || !$row.length) return;
+
+	// 支払い方法のセレクトボックが操作されたら
+	$payment.on('change', function () {
+	  const val = $(this).val() || '';
+	  const isCredit = val.indexOf('クレジット') !== -1; // 部分一致
+	  $row.attr('data-payment-type', isCredit ? 'credit' : 'other');
 	});
 
 	

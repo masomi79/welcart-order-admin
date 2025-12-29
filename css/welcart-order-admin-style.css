@@ -1,4 +1,8 @@
-/* 受注管理画面のスタイル */
+/*******************************************
+ *                                         *
+ *           一覧画面のスタイル               *
+ *                                         *
+ *******************************************/
 .tablenav-pages {
     margin: 1em 0;
     text-align: right;
@@ -17,34 +21,16 @@
     background: #0073aa;
     color: #fff;
 }
-/*
-#orders-main-table .order_table_tr{
-    border: solid 1px #ddd
-}
-
-#orders-main-table .order_table_tr:hover{
-    border-top: solid 1px blue
-}
-
-#orders-main-table .order_table_tr:hover > td{
-    border-top: solid 1px blue;
-    border-bottom: solid 1px blue;
-}
-
-#orders-main-table .order_table_tr:hover td:first-child{
-    border-left: 1px solid blue;
-}
-
-#orders-main-table .order_table_tr:hover td:last-child{
-    border-right: 1px solid blue;
-}
-*/
 #orders-main-table .order_table_tr:hover { 
     outline: 1px solid blue; 
     outline-offset: -1px; 
 }
 
-/* 詳細画面のスタイル */
+/*******************************************
+ *                                         *
+ *           詳細画面のスタイル               *
+ *                                         *
+ *******************************************/
 .widefat td textarea,
 .widefat td input[type="text"] {
     padding: 8px;
@@ -69,6 +55,15 @@ table.widefat {
 .order-detail-buttons .button{
     margin: 0 .5rem;
 }
+
+/*
+.order-admin-detail-table
+.order_detail_receipt_status
+*/
+.order_detail_receipt_status[data-payment-type="credit"]{
+    display: none;
+}
+
 
 /* 既存のスタイル */
 .welcart-order-detail select {
